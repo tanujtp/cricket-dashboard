@@ -15,8 +15,8 @@ export function LiveScoreTicker({ team1, team2, target, isLive }: LiveScoreTicke
   const [displayScore, setDisplayScore] = useState(team1.score)
   const [lastEvent, setLastEvent] = useState<string | null>(null)
   const [scoreFlash, setScoreFlash] = useState(false)
-  const [streak, setStreak] = useState<number[]>([])
   const [momentum, setMomentum] = useState<'hot' | 'cold' | 'neutral'>('neutral')
+  const [recentRuns, setRecentRuns] = useState<number[]>([])
   const [soundEnabled, setSoundEnabled] = useState(true)
   const prevScoreRef = useRef(team1.score)
 
@@ -34,15 +34,14 @@ export function LiveScoreTicker({ team1, team2, target, isLive }: LiveScoreTicke
     if (scoreDiff > 0) {
       setScoreFlash(true)
       
-      // Update streak
-      setStreak(prev => {
-        const newStreak = [...prev, scoreDiff].slice(-6)
-        // Calculate momentum
-        const total = newStreak.reduce((a, b) => a + b, 0)
+      // Update recent runs for momentum calculation
+      setRecentRuns(prev => {
+        const newRuns = [...prev, scoreDiff].slice(-6)
+        const total = newRuns.reduce((a, b) => a + b, 0)
         if (total >= 20) setMomentum('hot')
         else if (total <= 6) setMomentum('cold')
         else setMomentum('neutral')
-        return newStreak
+        return newRuns
       })
       
       // Show event
@@ -76,7 +75,7 @@ export function LiveScoreTicker({ team1, team2, target, isLive }: LiveScoreTicke
     } else if (team1.wickets > prevScoreRef.current) {
       // Wicket fell
       setLastEvent('WICKET!')
-      setStreak(prev => [...prev, 0].slice(-6))
+      setRecentRuns(prev => [...prev, 0].slice(-6))
       setMomentum('cold')
       setTimeout(() => setLastEvent(null), 2000)
     }
@@ -169,20 +168,21 @@ export function LiveScoreTicker({ team1, team2, target, isLive }: LiveScoreTicke
           </div>
 
           {/* Center - Match Status & Events */}
-          <div className="flex-1 max-w-xs text-center">
-            <AnimatePresence mode="wait">
+          <div className="flex-1 max-w-xs text-center relative min-h-[70px]">
+            {/* Event overlay - positioned absolutely to not affect layout */}
+            <AnimatePresence>
               {lastEvent && (
                 <motion.div
                   key={lastEvent}
-                  initial={{ opacity: 0, y: -30, scale: 0.5 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 30, scale: 0.5 }}
-                  className="mb-2"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="absolute inset-0 flex items-center justify-center z-10"
                 >
                   <span className={`text-4xl font-black ${
-                    lastEvent === 'FOUR!' ? 'text-emerald-400 animate-pulse' :
-                    lastEvent === 'SIX!' ? 'text-purple-400 animate-bounce' :
-                    lastEvent === 'WICKET!' ? 'text-red-500 animate-shake' :
+                    lastEvent === 'FOUR!' ? 'text-emerald-400' :
+                    lastEvent === 'SIX!' ? 'text-purple-400' :
+                    lastEvent === 'WICKET!' ? 'text-red-500' :
                     'text-blue-400'
                   }`}>
                     {lastEvent}
@@ -191,12 +191,11 @@ export function LiveScoreTicker({ team1, team2, target, isLive }: LiveScoreTicke
               )}
             </AnimatePresence>
             
-            {!lastEvent && (
-              <motion.div 
-                className="space-y-2"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
+            {/* Always render the status - just fade opacity when event shows */}
+            <div 
+              className="space-y-2 transition-opacity duration-200"
+              style={{ opacity: lastEvent ? 0.3 : 1 }}
+            >
                 <div className="flex items-center justify-center gap-2">
                   <span className="text-2xl font-black text-primary">{runsNeeded}</span>
                   <span className="text-muted-foreground">runs from</span>
@@ -209,27 +208,9 @@ export function LiveScoreTicker({ team1, team2, target, isLive }: LiveScoreTicke
                     RRR: {reqRate.toFixed(2)}
                   </span>
                 </div>
-              </motion.div>
-            )}
-
-            {/* Recent balls streak */}
-            <div className="flex items-center justify-center gap-1 mt-3">
-              {streak.map((runs, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                    runs === 6 ? 'bg-purple-500 text-white' :
-                    runs === 4 ? 'bg-emerald-500 text-white' :
-                    runs === 0 ? 'bg-muted text-muted-foreground' :
-                    'bg-blue-500/50 text-white'
-                  }`}
-                >
-                  {runs}
-                </motion.div>
-              ))}
             </div>
+
+            
           </div>
 
           {/* Bowling Team / Target */}

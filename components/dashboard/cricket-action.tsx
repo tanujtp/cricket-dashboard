@@ -5,21 +5,59 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 type BallOutcome = 'dot' | 'single' | 'double' | 'three' | 'four' | 'six' | 'wicket' | 'wide' | 'noball' | 'review'
 
-interface CricketActionProps {
-  onBallComplete?: (outcome: BallOutcome, runs: number) => void
+interface LiveScoreData {
+  runs: number
+  wickets: number
+  overs: string
+  target: number
+  battingTeam: string
+  bowlingTeam: string
 }
 
-const OUTCOMES: { type: BallOutcome; runs: number; weight: number; commentary: string[] }[] = [
-  { type: 'dot', runs: 0, weight: 30, commentary: ['Defended!', 'No run', 'Beaten!', 'Good length, no run', 'Blocked safely'] },
-  { type: 'single', runs: 1, weight: 28, commentary: ['Quick single!', 'Pushed for one', 'Turned away for one', 'Smart running'] },
-  { type: 'double', runs: 2, weight: 12, commentary: ['Two runs!', 'Well placed, coming back', 'Good running, two'] },
-  { type: 'three', runs: 3, weight: 2, commentary: ['Excellent running! Three taken', 'All three, great hustle'] },
-  { type: 'four', runs: 4, weight: 14, commentary: ['FOUR! Brilliant shot!', 'Races to the boundary!', 'FOUR! Timed to perfection!', 'That\'s dispatched!'] },
-  { type: 'six', runs: 6, weight: 5, commentary: ['MASSIVE SIX!', 'Into the stands!', 'SIX! What a hit!', 'That\'s gone all the way!'] },
-  { type: 'wicket', runs: 0, weight: 3, commentary: ['OUT! Bowled him!', 'GONE! Caught behind!', 'WICKET! LBW!', 'OUT! Caught at deep!'] },
-  { type: 'wide', runs: 1, weight: 3, commentary: ['Wide ball!', 'Too wide outside off', 'Signalled wide'] },
-  { type: 'noball', runs: 1, weight: 2, commentary: ['No ball! Overstepped', 'Free hit coming up!'] },
-  { type: 'review', runs: 0, weight: 1, commentary: ['Review taken! Checking for LBW...', 'DRS! Third umpire checking...'] },
+interface BallHistoryItem {
+  ball: number
+  runs: number
+  type: 'dot' | 'single' | 'double' | 'boundary' | 'six' | 'wicket'
+  batter: string
+}
+
+interface CricketActionProps {
+  onBallComplete?: (outcome: BallOutcome, runs: number) => void
+  liveScore?: LiveScoreData
+  recentBalls?: BallHistoryItem[]
+}
+
+const OUTCOMES: { type: BallOutcome; runs: number; weight: number; commentary: string[]; detail: string[] }[] = [
+  { type: 'dot', runs: 0, weight: 30, 
+    commentary: ['Defended!', 'No run', 'Beaten!', 'Good length, no run', 'Blocked safely'],
+    detail: ['Solid defence, no run', 'Beaten outside off', 'Good length, played to cover', 'Left alone, on the bounce'] },
+  { type: 'single', runs: 1, weight: 28, 
+    commentary: ['Quick single!', 'Pushed for one', 'Turned away for one', 'Smart running'],
+    detail: ['Pushed to mid-off, quick single', 'Worked to leg side for one', 'Dabbed down to third man'] },
+  { type: 'double', runs: 2, weight: 12, 
+    commentary: ['Two runs!', 'Well placed, coming back', 'Good running, two'],
+    detail: ['Driven through covers, two runs', 'Pulled to deep midwicket, easy two'] },
+  { type: 'three', runs: 3, weight: 2, 
+    commentary: ['Excellent running! Three taken', 'All three, great hustle'],
+    detail: ['Miss-field at boundary, three taken'] },
+  { type: 'four', runs: 4, weight: 14, 
+    commentary: ['FOUR! Brilliant shot!', 'Races to the boundary!', 'FOUR! Timed to perfection!', 'That\'s dispatched!'],
+    detail: ['Cover drive, beats the fielder', 'Pull shot, races to the fence', 'Cut shot, through point'] },
+  { type: 'six', runs: 6, weight: 5, 
+    commentary: ['MASSIVE SIX!', 'Into the stands!', 'SIX! What a hit!', 'That\'s gone all the way!'],
+    detail: ['Launched over long-on!', 'Slog sweep into the crowd!', 'Straight down the ground, huge!'] },
+  { type: 'wicket', runs: 0, weight: 3, 
+    commentary: ['OUT! Bowled him!', 'GONE! Caught behind!', 'WICKET! LBW!', 'OUT! Caught at deep!'],
+    detail: ['Stumps shattered!', 'Edge caught by keeper', 'Plumb in front, given out'] },
+  { type: 'wide', runs: 1, weight: 3, 
+    commentary: ['Wide ball!', 'Too wide outside off', 'Signalled wide'],
+    detail: ['Down the leg side, wide called'] },
+  { type: 'noball', runs: 1, weight: 2, 
+    commentary: ['No ball! Overstepped', 'Free hit coming up!'],
+    detail: ['Front foot no ball, free hit next'] },
+  { type: 'review', runs: 0, weight: 1, 
+    commentary: ['Review taken! Checking for LBW...', 'DRS! Third umpire checking...'],
+    detail: ['Checking for bat, ultra-edge'] },
 ]
 
 // Sound effects using Web Audio API
@@ -45,38 +83,60 @@ const useSoundEffects = () => {
     
     switch (type) {
       case 'four':
-        oscillator.frequency.setValueAtTime(587.33, ctx.currentTime) // D5
-        oscillator.frequency.setValueAtTime(783.99, ctx.currentTime + 0.1) // G5
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4)
+        // Exciting ascending fanfare for FOUR
         oscillator.type = 'sine'
+        gainNode.gain.setValueAtTime(0.4, ctx.currentTime)
+        oscillator.frequency.setValueAtTime(392, ctx.currentTime) // G4
+        oscillator.frequency.setValueAtTime(494, ctx.currentTime + 0.08) // B4
+        oscillator.frequency.setValueAtTime(587, ctx.currentTime + 0.16) // D5
+        oscillator.frequency.setValueAtTime(784, ctx.currentTime + 0.24) // G5
+        gainNode.gain.setValueAtTime(0.5, ctx.currentTime + 0.24)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6)
         break
       case 'six':
-        oscillator.frequency.setValueAtTime(523.25, ctx.currentTime) // C5
-        oscillator.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1) // E5
-        oscillator.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2) // G5
-        oscillator.frequency.setValueAtTime(1046.5, ctx.currentTime + 0.3) // C6
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6)
+        // Triumphant stadium roar effect for SIX
         oscillator.type = 'sine'
+        gainNode.gain.setValueAtTime(0.5, ctx.currentTime)
+        oscillator.frequency.setValueAtTime(262, ctx.currentTime) // C4
+        oscillator.frequency.setValueAtTime(330, ctx.currentTime + 0.08) // E4
+        oscillator.frequency.setValueAtTime(392, ctx.currentTime + 0.15) // G4
+        oscillator.frequency.setValueAtTime(523, ctx.currentTime + 0.22) // C5
+        oscillator.frequency.setValueAtTime(659, ctx.currentTime + 0.3) // E5
+        oscillator.frequency.setValueAtTime(784, ctx.currentTime + 0.38) // G5
+        oscillator.frequency.setValueAtTime(1047, ctx.currentTime + 0.46) // C6
+        gainNode.gain.setValueAtTime(0.6, ctx.currentTime + 0.46)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1)
         break
       case 'wicket':
-        oscillator.frequency.setValueAtTime(392, ctx.currentTime) // G4
-        oscillator.frequency.setValueAtTime(349.23, ctx.currentTime + 0.15) // F4
-        oscillator.frequency.setValueAtTime(293.66, ctx.currentTime + 0.3) // D4
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5)
+        // Dramatic descending tone for wicket
         oscillator.type = 'triangle'
+        gainNode.gain.setValueAtTime(0.4, ctx.currentTime)
+        oscillator.frequency.setValueAtTime(440, ctx.currentTime) // A4
+        oscillator.frequency.setValueAtTime(370, ctx.currentTime + 0.12) // F#4
+        oscillator.frequency.setValueAtTime(294, ctx.currentTime + 0.24) // D4
+        oscillator.frequency.setValueAtTime(220, ctx.currentTime + 0.36) // A3
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6)
         break
       case 'review':
-        oscillator.frequency.setValueAtTime(440, ctx.currentTime) // A4
-        oscillator.frequency.setValueAtTime(440, ctx.currentTime + 0.2)
-        oscillator.frequency.setValueAtTime(554.37, ctx.currentTime + 0.4) // C#5
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8)
+        // Suspenseful beeping for DRS
         oscillator.type = 'square'
+        gainNode.gain.setValueAtTime(0.2, ctx.currentTime)
+        oscillator.frequency.setValueAtTime(880, ctx.currentTime)
+        gainNode.gain.setValueAtTime(0.01, ctx.currentTime + 0.1)
+        gainNode.gain.setValueAtTime(0.2, ctx.currentTime + 0.2)
+        gainNode.gain.setValueAtTime(0.01, ctx.currentTime + 0.3)
+        gainNode.gain.setValueAtTime(0.3, ctx.currentTime + 0.4)
+        oscillator.frequency.setValueAtTime(1100, ctx.currentTime + 0.4)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8)
         break
       case 'cheer':
-        oscillator.frequency.setValueAtTime(600, ctx.currentTime)
-        oscillator.frequency.linearRampToValueAtTime(900, ctx.currentTime + 0.1)
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+        // Quick crowd cheer
         oscillator.type = 'sawtooth'
+        gainNode.gain.setValueAtTime(0.15, ctx.currentTime)
+        oscillator.frequency.setValueAtTime(500, ctx.currentTime)
+        oscillator.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.1)
+        oscillator.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.2)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
         break
     }
     
@@ -87,15 +147,15 @@ const useSoundEffects = () => {
   return { playSound }
 }
 
-export function CricketAction({ onBallComplete }: CricketActionProps) {
+export function CricketAction({ onBallComplete, liveScore, recentBalls = [] }: CricketActionProps) {
   const [phase, setPhase] = useState<'idle' | 'runup' | 'bowl' | 'hit' | 'result' | 'review'>('idle')
   const [outcome, setOutcome] = useState<BallOutcome>('dot')
   const [commentary, setCommentary] = useState<string>('')
+  const [detail, setDetail] = useState<string>('')
   const [showCelebration, setShowCelebration] = useState(false)
   const [ballCount, setBallCount] = useState(0)
   const [umpireSignal, setUmpireSignal] = useState<'none' | 'four' | 'six' | 'out' | 'wide' | 'noball' | 'review' | 'notout'>('none')
   const [reviewResult, setReviewResult] = useState<'pending' | 'out' | 'notout' | null>(null)
-  const [ballHistory, setBallHistory] = useState<{outcome: BallOutcome; runs: number}[]>([])
   
   const { playSound } = useSoundEffects()
 
@@ -106,10 +166,11 @@ export function CricketAction({ onBallComplete }: CricketActionProps) {
       random -= o.weight
       if (random <= 0) {
         const randomCommentary = o.commentary[Math.floor(Math.random() * o.commentary.length)]
-        return { ...o, selectedCommentary: randomCommentary }
+        const randomDetail = o.detail[Math.floor(Math.random() * o.detail.length)]
+        return { ...o, selectedCommentary: randomCommentary, selectedDetail: randomDetail }
       }
     }
-    return { ...OUTCOMES[0], selectedCommentary: OUTCOMES[0].commentary[0] }
+    return { ...OUTCOMES[0], selectedCommentary: OUTCOMES[0].commentary[0], selectedDetail: OUTCOMES[0].detail[0] }
   }, [])
 
   const playBall = useCallback(() => {
@@ -118,6 +179,7 @@ export function CricketAction({ onBallComplete }: CricketActionProps) {
     const result = getRandomOutcome()
     setOutcome(result.type)
     setCommentary(result.selectedCommentary)
+    setDetail(result.selectedDetail)
     setUmpireSignal('none')
     setReviewResult(null)
     setPhase('runup')
@@ -144,13 +206,9 @@ export function CricketAction({ onBallComplete }: CricketActionProps) {
             playSound('wicket')
             setShowCelebration(true)
             setTimeout(() => setShowCelebration(false), 2000)
-            onBallComplete?.('wicket', 0)
-          } else {
-            playSound('cheer')
-            onBallComplete?.('dot', 0)
+onBallComplete?.('wicket', 0)
           }
           setBallCount(prev => prev + 1)
-          setBallHistory(prev => [...prev.slice(-5), { outcome: isOut ? 'wicket' : 'dot', runs: 0 }])
         }, 3000)
         
         setTimeout(() => {
@@ -186,7 +244,6 @@ export function CricketAction({ onBallComplete }: CricketActionProps) {
       
       onBallComplete?.(result.type, result.runs)
       setBallCount(prev => prev + 1)
-      setBallHistory(prev => [...prev.slice(-5), { outcome: result.type, runs: result.runs }])
     }, 1600)
     
     // Reset (only for non-review)
@@ -198,12 +255,17 @@ export function CricketAction({ onBallComplete }: CricketActionProps) {
     }
   }, [phase, getRandomOutcome, onBallComplete, playSound])
 
-  // Auto-play every 5 seconds
+  // Start immediately on mount, then every 5 seconds
   useEffect(() => {
+    // Immediate first ball with slight delay for DOM to be ready
+    const immediate = setTimeout(() => playBall(), 500)
+    // Then continue every 5 seconds
     const timer = setInterval(playBall, 5000)
-    playBall() // Start immediately
-    return () => clearInterval(timer)
-  }, [playBall])
+    return () => {
+      clearTimeout(immediate)
+      clearInterval(timer)
+    }
+  }, []) // Empty deps - only run on mount
 
   const getBallColor = (o: BallOutcome) => {
     switch (o) {
@@ -222,6 +284,53 @@ export function CricketAction({ onBallComplete }: CricketActionProps) {
       
       {/* Crowd silhouette effect */}
       <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/40 to-transparent" />
+
+      {/* Mini Scorecard Overlay - Top Left */}
+      {liveScore && (
+        <div className="absolute top-3 left-3 z-20">
+          <motion.div 
+            className="bg-black/70 backdrop-blur-md rounded-xl px-4 py-2 border border-white/10"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-blue-400">{liveScore.battingTeam}</span>
+              <div className="flex items-baseline gap-1">
+                <motion.span 
+                  className="text-2xl font-black text-white tabular-nums"
+                  key={liveScore.runs}
+                  initial={{ scale: 1.2, color: '#22c55e' }}
+                  animate={{ scale: 1, color: '#ffffff' }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {liveScore.runs}
+                </motion.span>
+                <span className="text-lg text-white/60">/{liveScore.wickets}</span>
+              </div>
+              <span className="text-xs text-white/50 font-mono">({liveScore.overs})</span>
+            </div>
+            <div className="text-[10px] text-white/40 mt-0.5">
+              Need {liveScore.target - liveScore.runs} from {Math.max(0, 120 - (parseInt(liveScore.overs.split('.')[0]) * 6 + parseInt(liveScore.overs.split('.')[1] || '0')))} balls
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Live indicator & Ball counter - Top Right */}
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+        <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md rounded-full px-3 py-1 border border-white/10">
+          <motion.span 
+            className="w-2 h-2 bg-red-500 rounded-full"
+            animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+          <span className="text-xs font-bold text-white">LIVE</span>
+        </div>
+        <div className="bg-black/70 backdrop-blur-md rounded-lg px-3 py-1 border border-white/10">
+          <span className="text-xs text-white/60">Ball </span>
+          <span className="text-sm font-bold text-white">#{ballCount}</span>
+        </div>
+      </div>
       
       {/* Pitch area */}
       <div className="absolute inset-x-0 bottom-0 h-[70%]">
@@ -605,7 +714,7 @@ export function CricketAction({ onBallComplete }: CricketActionProps) {
         <span className="text-xs font-bold text-white">Ball #{ballCount + 1}</span>
       </div>
 
-      {/* Commentary Box */}
+      {/* Commentary Box - Shows what happened */}
       <AnimatePresence mode="wait">
         {commentary && phase !== 'idle' && (
           <motion.div
@@ -615,27 +724,40 @@ export function CricketAction({ onBallComplete }: CricketActionProps) {
             exit={{ opacity: 0, y: -10 }}
             className="absolute bottom-16 left-1/2 -translate-x-1/2 max-w-[80%]"
           >
-            <div className="bg-black/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10">
-              <p className="text-sm font-bold text-white text-center">{commentary}</p>
+            <div className="bg-black/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10 text-center">
+              <p className="text-sm font-bold text-white">{commentary}</p>
+              {detail && phase === 'result' && (
+                <p className="text-xs text-white/60 mt-1">{detail}</p>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Ball History */}
+      {/* Ball History - Use passed recentBalls for sync */}
       <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
         <span className="text-[10px] text-white/60 mr-1">This Over:</span>
-        {ballHistory.map((b, i) => (
+        {recentBalls.map((b, i) => (
           <motion.div
             key={i}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className={`w-6 h-6 rounded-full ${getBallColor(b.outcome)} flex items-center justify-center`}
+            className={`w-6 h-6 rounded-full flex items-center justify-center ${
+              b.type === 'boundary' ? 'bg-emerald-500' :
+              b.type === 'six' ? 'bg-purple-500' :
+              b.type === 'wicket' ? 'bg-red-500' :
+              b.type === 'dot' ? 'bg-gray-500' :
+              'bg-blue-500'
+            }`}
           >
             <span className="text-[10px] font-bold text-white">
-              {b.outcome === 'wicket' ? 'W' : b.outcome === 'wide' ? 'Wd' : b.outcome === 'noball' ? 'Nb' : b.runs}
+              {b.type === 'wicket' ? 'W' : b.type === 'dot' ? '•' : b.runs}
             </span>
           </motion.div>
+        ))}
+        {/* Show empty slots for remaining balls */}
+        {Array.from({ length: Math.max(0, 6 - recentBalls.length) }).map((_, i) => (
+          <div key={`empty-${i}`} className="w-6 h-6 rounded-full border border-white/20 border-dashed" />
         ))}
       </div>
 

@@ -73,8 +73,8 @@ export function MomentumGraph({ data, compact = false }: MomentumGraphProps) {
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id="pressureGradCompact" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0} />
+                <stop key="compact-stop-0" offset="0%" stopColor="var(--chart-4)" stopOpacity={0.4} />
+                <stop key="compact-stop-1" offset="100%" stopColor="var(--chart-4)" stopOpacity={0} />
               </linearGradient>
             </defs>
             
@@ -143,13 +143,13 @@ export function MomentumGraph({ data, compact = false }: MomentumGraphProps) {
             <AreaChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
               <defs>
                 <linearGradient id="pressureGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.5} />
-                  <stop offset="50%" stopColor="var(--chart-4)" stopOpacity={0.2} />
-                  <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0} />
+                  <stop key="pressure-stop-0" offset="0%" stopColor="var(--chart-4)" stopOpacity={0.5} />
+                  <stop key="pressure-stop-1" offset="50%" stopColor="var(--chart-4)" stopOpacity={0.2} />
+                  <stop key="pressure-stop-2" offset="100%" stopColor="var(--chart-4)" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="runRateGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
+                  <stop key="runrate-stop-0" offset="0%" stopColor="var(--chart-2)" stopOpacity={0.3} />
+                  <stop key="runrate-stop-1" offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               

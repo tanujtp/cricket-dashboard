@@ -66,9 +66,9 @@ export function LivePitch({ pitch }: LivePitchProps) {
           {/* Definitions */}
           <defs>
             <linearGradient id="pitchGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#8B7355" stopOpacity="0.9" />
-              <stop offset="50%" stopColor="#A0896C" stopOpacity="0.95" />
-              <stop offset="100%" stopColor="#8B7355" stopOpacity="0.9" />
+              <stop key="pitch-stop-0" offset="0%" stopColor="#8B7355" stopOpacity="0.9" />
+              <stop key="pitch-stop-1" offset="50%" stopColor="#A0896C" stopOpacity="0.95" />
+              <stop key="pitch-stop-2" offset="100%" stopColor="#8B7355" stopOpacity="0.9" />
             </linearGradient>
             <filter id="glow">
               <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
